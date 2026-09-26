@@ -6,7 +6,6 @@ export default function HomePage() {
 
   const handleSimulateScan = async () => {
     setStatus('scanning');
-    // Simulate network delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {

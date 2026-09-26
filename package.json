@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@prisma/client": "5.22.0",
+    "html5-qrcode": "^2.3.8",
     "nanoid": "^5.0.7",
     "next": "latest",
     "qrcode": "^1.5.3",

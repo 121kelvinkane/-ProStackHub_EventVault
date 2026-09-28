@@ -1,49 +1,58 @@
 'use client';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
+
+// Dynamically import the scanner so it only loads in the browser (fixes Vercel build)
+const QRScanner = dynamic(() => import('@/components/QRScanner'), {
+  ssr: false,
+  loading: () => <p className="text-center text-gray-400">Loading camera...</p>
+});
 
 export default function ScannerPage() {
-  const [status, setStatus] = useState('idle');
+  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [scanning, setScanning] = useState(true);
 
-  const handleSimulateScan = async () => {
-    setStatus('scanning');
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+  const handleScan = async (qrCode: string) => {
+    setScanning(false);
     try {
       const res = await fetch('/api/tickets/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qrCode: 'SIMULATED-QR-CODE-123' })
+        body: JSON.stringify({ qrCode }),
       });
       const data = await res.json();
-      setStatus(data.success ? 'success' : 'error');
-      alert(data.success ? '✅ ' + data.message : '❌ ' + data.message);
-    } catch (err) {
-      setStatus('error');
-      alert('Network error');
+      setResult({ success: data.success, message: data.message });
+    } catch {
+      setResult({ success: false, message: 'Network error' });
     }
+  };
+
+  const resetScanner = () => {
+    setResult(null);
+    setScanning(true);
   };
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-8 bg-gradient-to-br from-gray-900 to-gray-800 text-white">
       <h1 className="text-3xl font-bold mb-6">Ticket Scanner</h1>
-      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl text-center">
-        <div className="mb-6 p-4 bg-gray-900 rounded border border-gray-600">
-          <p className="text-gray-400 text-sm mb-2">Camera Viewfinder</p>
-          <div className="h-48 flex items-center justify-center border-2 border-dashed border-gray-600 rounded">
-            <span className="text-gray-500">[ Camera Placeholder ]</span>
+      <div className="w-full max-w-md p-8 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl">
+        {scanning ? (
+          <QRScanner onScan={handleScan} />
+        ) : (
+          <div className="text-center">
+            <div className={`mb-4 p-4 rounded-lg ${result?.success ? 'bg-green-900 border border-green-700' : 'bg-red-900 border border-red-700'}`}>
+              <p className={`text-lg font-semibold ${result?.success ? 'text-green-200' : 'text-red-200'}`}>
+                {result?.success ? '✅' : '❌'} {result?.message}
+              </p>
+            </div>
+            <button
+              onClick={resetScanner}
+              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold"
+            >
+              Scan Another Ticket
+            </button>
           </div>
-        </div>
-        
-        <button 
-          onClick={handleSimulateScan}
-          disabled={status === 'scanning'}
-          className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:cursor-not-allowed rounded-lg font-semibold transition-colors"
-        >
-          {status === 'scanning' ? 'Scanning...' : 'Simulate Ticket Scan'}
-        </button>
-        
-        {status === 'success' && <p className="mt-4 text-green-400 font-medium">✅ Ticket Validated!</p>}
-        {status === 'error' && <p className="mt-4 text-red-400 font-medium">❌ Invalid Ticket</p>}
+        )}
       </div>
     </main>
   );
